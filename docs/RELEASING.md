@@ -10,6 +10,7 @@ downloadable assets plus a browser build.
 | `panda-runner-web.zip` | `release.yml` (ubuntu) | any static web server / modern browser |
 | `PandaRunner-<version>-macOS-arm64.dmg` | `release.yml` (macos-14) | macOS 12+ on Apple silicon |
 | `PandaRunner-<version>-macOS-arm64.zip` | `release.yml` (macos-14) | same, zipped `.app` for manual install |
+| `PandaRunner-<version>-macOS-arm64-SHA256SUMS.txt` | `release.yml` (macos-14) | integrity check for the two macOS files |
 | GitHub Pages site | `pages.yml` | `https://<owner>.github.io/panda-runner/` |
 
 The web build is also deployed to GitHub Pages on every push to `main`, so the
@@ -44,6 +45,9 @@ playable link always tracks the latest `main`.
 `Actions → Release → Run workflow` builds and uploads the same artifacts to the
 workflow run, but does **not** create a Release (it only publishes for `v*`
 tags). Use it to validate the pipeline before tagging.
+
+The Pages workflow also skips cleanly when Pages has not been enabled yet
+(it emits a warning instead of failing), so `main` stays green.
 
 ## Enabling GitHub Pages
 

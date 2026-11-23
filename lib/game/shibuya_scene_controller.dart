@@ -497,7 +497,7 @@ class ShibuyaSceneController {
       }
     }
     _syncAudio();
-    _syncProps();
+    _syncProps(dt);
     _syncTrains(frozen ? 0 : dt);
     _syncHero(dt);
     _computeCamera(dt);
@@ -549,7 +549,11 @@ class ShibuyaSceneController {
     }
   }
 
-  void _syncProps() {
+  void _syncProps(double dt) {
+    // Props animate on wall-clock time, so they must advance by the real frame
+    // delta: a fixed 1/60 step made neon pulses and sign loops run at double
+    // speed on 120 Hz ProMotion displays and half speed when frames drop.
+    final step = state.photoMode || state.paused ? 0.0 : dt;
     _syncMapsMorph();
     // Animated Scramble media screen while it can be seen.
     final dm = math.sqrt(math.pow(camPos.x + 2.5, 2) + math.pow(camPos.z + 41.5, 2));
@@ -567,20 +571,20 @@ class ShibuyaSceneController {
     for (int i = 0; i < world.wallRunMats.length; i++) {
       world.wallRunMats[i].emissiveFactor = hexColor('#38BDF8', sim.activeWall == i ? 2.6 : 0.95);
     }
-    _syncPlasma(1 / 60);
+    _syncPlasma(step);
     final cars = [
       for (final t in sim.taxis)
         if (t.active) (x: t.x, z: t.z),
       for (final c in sim.drift) (x: c.x, z: c.z),
     ];
     for (int i = 0; i < world.archRigs.length; i++) {
-      world.archRigs[i].sync(state.photoMode ? 0 : 1 / 60, _time, sim.s,
+      world.archRigs[i].sync(step, _time, sim.s,
           state.phase == AppPhase.finale, i < sim.portalDone.length && sim.portalDone[i], _mapsMorph, cars);
     }
     // igniteGoogleLetter / flash decay (3.2/s): core 3.3 -> 2.15, shell
     // .72 -> .46; dormant core #1C273B x.14, shell x.08 @ .32 opacity.
     for (int i = 0; i < 6; i++) {
-      if (_letterFlash[i] > 0) _letterFlash[i] = math.max(0, _letterFlash[i] - (1 / 60) * 3.2);
+      if (_letterFlash[i] > 0) _letterFlash[i] = math.max(0, _letterFlash[i] - step * 3.2);
     }
     for (final l in world.googleLetters) {
       final i = l.letterIndex;
@@ -596,7 +600,7 @@ class ShibuyaSceneController {
         l.material.baseColorFactor = vm.Vector4(c.x, c.y, c.z, lit ? 0.34 : 0.32);
       }
     }
-    final lit = world.glbWorld.updateSigns(sim.s, 1 / 60, _time,
+    final lit = world.glbWorld.updateSigns(sim.s, step, _time,
         finale: state.phase == AppPhase.finale,
         reset: state.phase == AppPhase.skyDrop || state.phase == AppPhase.mapsTitle);
     if (_mapsMorph > 0.35) {

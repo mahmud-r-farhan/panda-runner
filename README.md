@@ -20,8 +20,11 @@ finish on the Shibuya Stream rooftop.
 | **Browser** (Windows, macOS, Linux, Chromebook, Android, iOS) | **[mahmud-r-farhan.github.io/panda-runner](https://mahmud-r-farhan.github.io/panda-runner/)** — no install, works fullscreen and offline after the first load |
 | **macOS 12+** (Apple silicon) | Download `PandaRunner-*-macOS-arm64.dmg` from [Releases](https://github.com/mahmud-r-farhan/panda-runner/releases) |
 | **Self-hosted web** | Download `panda-runner-web.zip`, unzip, serve the folder with any static server |
-| **iOS** | Build from source (`flutter run -d ios --enable-flutter-gpu`); store build needs your own signing |
+| **iOS 15+** | Build from source (`flutter run -d ios --enable-flutter-gpu`); store build needs your own signing |
 
+> The browser build is served by GitHub Pages; maintainers enable it once under **Settings → Pages → Source: GitHub Actions**
+> (the deploy workflow skips cleanly until then).
+>
 > The macOS app is unsigned. If Gatekeeper blocks the first launch, right-click the app → **Open**, or run
 > `xattr -dr com.apple.quarantine /Applications/PandaRunner.app`.
 

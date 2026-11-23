@@ -1,0 +1,63 @@
+name: neon_scramble
+description: >-
+  Flutter Scene (Flutter GPU + WebGL2) port of the Gemini Neon Scramble demo:
+  drop into Shibuya Scramble Crossing as Pegman, weave traffic, grind Yamanote
+  rails, light up neon signs, and reach Shibuya Stream - Google Tokyo.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+  flutter: '>=3.47.0'
+
+dependencies:
+  audioplayers: ^6.8.1
+  flutter:
+    sdk: flutter
+  flutter_scene: ^0.24.3
+  vector_math: ^2.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  shaders:
+    - shaders/speed_lines.frag
+    - shaders/vignette.frag
+  assets:
+    - assets/data/
+    - assets/models/
+    - assets/audio/
+    - assets/sfx/
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.otf
+        - asset: assets/fonts/Inter-Medium.otf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.otf
+          weight: 700
+        - asset: assets/fonts/Inter-ExtraBold.otf
+          weight: 800
+    - family: NotoSansJP
+      fonts:
+        - asset: assets/fonts/NotoSansJP-sub-500.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansJP-sub-700.ttf
+          weight: 700
+        - asset: assets/fonts/NotoSansJP-sub-900.ttf
+          weight: 900
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+        - asset: assets/fonts/JetBrainsMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/JetBrainsMono-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/JetBrainsMono-Bold.ttf
+          weight: 700

@@ -3,13 +3,18 @@ import 'package:vector_math/vector_math.dart' as vm;
 
 enum MapLocationId { shibuya, bambooForest, cyberCircuit }
 
-/// Represents a distinct playable map environment with custom skybox,
-/// lighting palette, street labels, and thematic accents.
+/// A sky mood / colour grade for the shared Shibuya route.
+///
+/// The level geometry (scramble crossing, Yamanote viaduct, Shibuya Stream)
+/// is identical for every entry; switching a location re-grades the sky,
+/// environment map and accent palette, which changes the look of the whole
+/// run without a separate level download.
 class MapLocation {
   const MapLocation({
     required this.id,
     required this.name,
     required this.nameJa,
+    required this.shortName,
     required this.subtitle,
     required this.emoji,
     required this.accentColor,
@@ -27,6 +32,9 @@ class MapLocation {
   final MapLocationId id;
   final String name;
   final String nameJa;
+
+  /// Compact label used by the title-card selector pills.
+  final String shortName;
   final String subtitle;
   final String emoji;
   final Color accentColor;
@@ -44,11 +52,12 @@ class MapLocation {
   vm.Vector3 get skyHorizon => vm.Vector3(horizonRgb[0], horizonRgb[1], horizonRgb[2]);
   vm.Vector3 get skyGround => vm.Vector3(groundRgb[0], groundRgb[1], groundRgb[2]);
 
-  /// Tokyo Shibuya Scramble (The original cyberpunk neon metropolis).
+  /// Tokyo Shibuya Scramble (the original cyberpunk neon grade).
   static const shibuya = MapLocation(
     id: MapLocationId.shibuya,
-    name: 'Shibuya Neon Scramble',
-    nameJa: '渋谷スクランブル',
+    name: 'Neon Night',
+    nameJa: '渋谷ナイト',
+    shortName: 'Neon',
     subtitle: 'Shibuya Crossing → Google Tokyo',
     emoji: '🏮',
     accentColor: Color(0xFFFF4F00),
@@ -60,15 +69,16 @@ class MapLocation {
     startStreetEn: 'Scramble',
     destinationJa: '渋谷ストリーム · Google Tokyo',
     destinationEn: 'Google Tokyo',
-    description: 'Neon metropolis · 3-lane scramble · Yamanote Line viaduct',
+    description: 'Cyan + orange night grade · 3-lane scramble · Yamanote viaduct',
   );
 
-  /// Kyoto Bamboo Forest & Torii Gates (Serene bamboo forest & golden lanterns).
+  /// Emerald dawn grade (serene jade light over the same Shibuya route).
   static const bambooForest = MapLocation(
     id: MapLocationId.bambooForest,
-    name: 'Kyoto Bamboo Temple',
-    nameJa: '嵐山竹林街道',
-    subtitle: 'Bamboo Grove → Golden Sanctuary',
+    name: 'Jade Dawn',
+    nameJa: '翡翠の夜明け',
+    shortName: 'Jade',
+    subtitle: 'Shibuya Crossing → Google Tokyo',
     emoji: '🎋',
     accentColor: Color(0xFF10B981),
     secondaryColor: Color(0xFFF59E0B),
@@ -79,15 +89,16 @@ class MapLocation {
     startStreetEn: 'Bamboo Grove',
     destinationJa: '金閣寺高台 · Golden Sanctuary',
     destinationEn: 'Golden Sanctuary',
-    description: 'Emerald bamboo paths · Glowing torii arches · Sacred river bridge',
+    description: 'Emerald dawn grade · jade sky · golden lantern accents',
   );
 
-  /// Akihabara Electric Cyberway (Ultra-violet highway & laser grids).
+  /// Ultraviolet grade (magenta voltage over the same Shibuya route).
   static const cyberCircuit = MapLocation(
     id: MapLocationId.cyberCircuit,
-    name: 'Akihabara Cyberway',
-    nameJa: '秋葉原電脳街',
-    subtitle: 'Electric City → Core Network Tower',
+    name: 'Ultraviolet',
+    nameJa: '紫電の街',
+    shortName: 'Ultra',
+    subtitle: 'Shibuya Crossing → Google Tokyo',
     emoji: '⚡',
     accentColor: Color(0xFFD946EF),
     secondaryColor: Color(0xFF06B6D4),
@@ -98,7 +109,7 @@ class MapLocation {
     startStreetEn: 'Cyberway',
     destinationJa: '電波タワー · Core Tower',
     destinationEn: 'Core Tower',
-    description: 'Ultra-violet speedway · Hologram billboards · High-voltage grid',
+    description: 'Ultraviolet grade · magenta sky · high-voltage neon cyan',
   );
 
   static const List<MapLocation> all = [shibuya, bambooForest, cyberCircuit];

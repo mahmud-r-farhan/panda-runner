@@ -24,6 +24,10 @@ class SoundFx {
   AudioPlayer? _rail, _wind, _skyDrop;
   double _railVol = 0, _windVol = 0;
   bool _skyDropOn = false;
+  bool _paused = false;
+
+  /// Haptics follow the device, not the mute switch.
+  bool haptics = true;
 
   static const double _bgmVolume = 1.0;
 
@@ -68,6 +72,26 @@ class SoundFx {
     _muted = v;
     _bgm?.setVolume(v ? 0 : _bgmVolume);
     if (v) {
+      setRailGrind(false);
+      updateOverchargeWind(0);
+      skyDropWind(-1);
+    }
+  }
+
+  /// Pauses or resumes music and loops, e.g. from the pause overlay or when
+  /// the app moves to the background. Safe to call repeatedly.
+  void setPaused(bool value) {
+    if (_paused == value) return;
+    _paused = value;
+    final bgm = _bgm;
+    if (bgm != null) {
+      if (value) {
+        bgm.pause();
+      } else {
+        bgm.resume();
+      }
+    }
+    if (value) {
       setRailGrind(false);
       updateOverchargeWind(0);
       skyDropWind(-1);
@@ -186,27 +210,27 @@ class SoundFx {
 
   // ---------------------------------------------------------- haptics
   void playLaneSwitch() {
-    if (_muted) return;
+    if (!haptics) return;
     HapticFeedback.selectionClick();
   }
 
   void playJump() {
-    if (_muted) return;
+    if (!haptics) return;
     HapticFeedback.lightImpact();
   }
 
   void playBoostRing() {
-    if (_muted) return;
+    if (!haptics) return;
     HapticFeedback.mediumImpact();
   }
 
   void playCrash() {
-    if (_muted) return;
+    if (!haptics) return;
     HapticFeedback.heavyImpact();
   }
 
   void playVictory() {
-    if (_muted) return;
+    if (!haptics) return;
     HapticFeedback.heavyImpact();
   }
 

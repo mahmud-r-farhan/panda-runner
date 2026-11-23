@@ -7,7 +7,7 @@ import 'package:flutter_scene/scene.dart' as fs;
 
 /// The Scramble media facade's animated screen — port of the demo's
 /// `Rg()`/`zg()` canvas (gradient backdrop, scanlines, 16 equaliser bars,
-/// NEON / NEON SCRAMBLE / ネオンスクランブル, Google dots), redrawn ~8×/s.
+/// PANDA / PANDA RUNNER / パンダランナー, Google dots), redrawn ~8×/s.
 class MediaScreen {
   MediaScreen(this.material);
   final fs.PhysicallyBasedMaterial material;
@@ -93,9 +93,9 @@ class MediaScreen {
       s.restore();
     }
 
-    text('NEON', 76, const Color(0xFFFFFFFF), 168, 'Inter');
-    text('NEON SCRAMBLE', 41, const Color(0xFF38BDF8), 226, 'Inter');
-    text('ネオンスクランブル', 31, f > 0.5 ? const Color(0xFFFBBC05) : const Color(0xFFFF7A33), 272,
+    text('PANDA', 76, const Color(0xFFFFFFFF), 168, 'Inter');
+    text('PANDA RUNNER', 41, const Color(0xFF38BDF8), 226, 'Inter');
+    text('パンダランナー', 31, f > 0.5 ? const Color(0xFFFBBC05) : const Color(0xFFFF7A33), 272,
         'NotoSansJP');
     const h = [Color(0xFF4285F4), Color(0xFFEA4335), Color(0xFFFBBC05), Color(0xFF34A853)];
     for (int e = 0; e < 4; e++) {

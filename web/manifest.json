@@ -1,12 +1,15 @@
 {
-    "name": "neon_scramble",
-    "short_name": "neon_scramble",
+    "name": "Panda Runner — 3D Neon Parkour",
+    "short_name": "Panda Runner",
     "start_url": ".",
+    "scope": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "display_override": ["fullscreen", "standalone", "minimal-ui"],
+    "orientation": "landscape",
+    "background_color": "#07090E",
+    "theme_color": "#07090E",
+    "categories": ["games", "entertainment"],
+    "description": "Sprint the Shibuya Scramble Crossing as a neon panda. Vault taxis, grind the Yamanote rails, ignite Tokyo and chase a new high score.",
     "prefer_related_applications": false,
     "icons": [
         {

@@ -1,0 +1,19 @@
+# Normalise text files so contributors on any platform produce clean diffs.
+* text=auto eol=lf
+
+# Binary assets: never diff, never convert line endings.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.glb binary
+*.mp3 binary
+*.wav binary
+*.otf binary
+*.ttf binary
+
+# Flutter / tooling
+*.dart text diff=dart
+pubspec.lock text
+*.pbxproj text -diff

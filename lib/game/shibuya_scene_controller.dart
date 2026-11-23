@@ -24,7 +24,7 @@ import 'world_textures.dart';
 double _lerp(double a, double b, double t) => a + (b - a) * t;
 double _clamp(double v, double a, double b) => v < a ? a : (v > b ? b : v);
 
-/// Owns the Flutter Scene world for Neon Scramble: builds the OSM Shibuya
+/// Owns the Flutter Scene world for Panda Runner: builds the OSM Shibuya
 /// level, runs [HeroSim] and drives Pegman, traffic and the camera rigs
 /// ported from the web demo (`computeCameraState`).
 class ShibuyaSceneController {
@@ -81,7 +81,7 @@ class ShibuyaSceneController {
   int _lastCalloutId = -1;
 
   Future<void> initialize() async {
-    state.setLoading(0.06, 'Loading Neon Scramble...');
+    state.setLoading(0.06, 'Waking the panda...');
     await fs.Scene.initializeStaticResources();
     state.setLoading(0.18, 'Loading Shibuya...');
     level = await ShibuyaLevel.load();
@@ -112,7 +112,7 @@ class ShibuyaSceneController {
     await world.glbWorld.buildSignFaces();
     await world.glbWorld.media?.update(0, 1.8, force: true);
     scene.add(world.root);
-    state.setLoading(0.8, 'Preparing 3D Panda Runner & Pegman...');
+    state.setLoading(0.8, 'Preparing panda & runner rigs...');
     _skyDome = NeonEnvironment.buildSkyDome();
     world.refRoot.add(_skyDome!);
     pegman = GlbPegman(glb)..attach(world.refRoot);
@@ -481,8 +481,11 @@ class ShibuyaSceneController {
   // --------------------------------------------------------------- tick
   void tick(double dt) {
     if (!initialized) return;
+    // Photo mode and pause both freeze the simulation (and therefore the
+    // gameplay clock) while the renderer keeps drawing the scene.
+    final frozen = state.photoMode || state.paused;
     _time += dt;
-    if (!state.photoMode) sim.step(dt);
+    if (!frozen) sim.step(dt);
     _handleEvents();
     final c = state.callout;
     if (c != null && c.id != _lastCalloutId) {
@@ -495,13 +498,28 @@ class ShibuyaSceneController {
     }
     _syncAudio();
     _syncProps();
-    _syncTrains(dt);
+    _syncTrains(frozen ? 0 : dt);
     _syncHero(dt);
     _computeCamera(dt);
     _skyDome?.position = vm.Vector3(camPos.x, camPos.y, camPos.z);
     _syncBounce();
-    _syncFx(state.photoMode ? 0 : dt);
-    state.tick(state.photoMode ? 0 : dt);
+    _syncFx(frozen ? 0 : dt);
+    state.tick(frozen ? 0 : dt);
+  }
+
+  /// Abandons the current run and returns to the title / map screen.
+  void quitToTitle() {
+    if (!initialized) return;
+    state.returnToTitle();
+    sim.reset();
+    sim.events.clear();
+    panda.resetTrail();
+    pegman.resetTrail();
+    fx.reset();
+    _poPreset = null;
+    _firstPill = true;
+    _camInit = false;
+    soundFx.setPaused(false);
   }
 
   void _syncMapsMorph() {
@@ -778,6 +796,9 @@ class ShibuyaSceneController {
         case 'stumble':
           _hazardZap = 0.42;
           fx.sparkBurst(p, 20, 1.25, 3.2, math.max(0, p.y - 0.5));
+          // Each crash burns a shield; the third one ends the run. The
+          // danger callout above already fires the crash haptic/sound.
+          state.registerHit();
         case 'nearMiss':
         case 'driftNearMiss':
           fx.spawnArc(hero, p, 0.25);
@@ -785,6 +806,8 @@ class ShibuyaSceneController {
         case 'transfer':
           fx.sparkBurst(p, 22, 1.55, 4, math.max(0, p.y - 0.4));
         case 'boostRing':
+          // Rings also top up one shield: risk/reward keeps long runs alive.
+          state.restoreShield();
           if (e.index < world.rings.length) {
             final g = world.rings[e.index].glow..flash = 1;
             _bounce?.push(p.x, p.z, vm.Vector4(g.color.x, g.color.y, g.color.z, 1));
@@ -912,7 +935,9 @@ class ShibuyaSceneController {
 
   void _syncAudio() {
     final a = soundFx;
-    final playing = state.phase == AppPhase.playing && !state.photoMode;
+    final playing = state.phase == AppPhase.playing &&
+        !state.photoMode &&
+        !state.paused;
     if (playing && sim.move == SimMove.railGrind) {
       a.setRailGrind(true, _clamp(sim.speed / 38, 0.25, 1));
     } else {
@@ -965,7 +990,7 @@ class ShibuyaSceneController {
     fx.update(dt, f);
     // _computeEffectiveSpeedLinesFactor
     double sl = 0;
-    if (!state.photoMode && playing && f.speed >= 34.72 &&
+    if (!state.photoMode && !state.paused && playing && f.speed >= 34.72 &&
         sim.move != SimMove.finaleOrbit && sim.move != SimMove.skyDrop) {
       final i = _clamp((f.speed - 34.72) / 10.5, 0, 1);
       final r = f.overcharge;

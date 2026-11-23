@@ -1,7 +1,7 @@
 import 'package:flutter_scene/scene.dart' as fs;
 import 'package:vector_math/vector_math.dart' as vm;
 
-/// The five glTF models shipped by the Neon Scramble web demo
+/// The five glTF models shipped by the original Neon Scramble web demo
 /// (`pegman_rig`, `google_shibuya_tower`, `shibuya_arch`, `shibuya_props`,
 /// `tokyo_fleet`), loaded with Flutter Scene's runtime glTF importer.
 ///

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -18,33 +18,119 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Panda Runner — a 3D neon parkour runner. Sprint the Shibuya Scramble Crossing, vault taxis, grind the Yamanote rails and light up Tokyo. Free to play in your browser.">
+  <meta name="theme-color" content="#07090E">
+  <meta name="color-scheme" content="dark">
+
+  <!-- Open Graph / social previews -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Panda Runner — 3D Neon Parkour">
+  <meta property="og:description" content="Sprint the Shibuya Scramble Crossing as a neon panda. Vault taxis, grind rails, chase a new high score.">
+  <meta property="og:image" content="icons/Icon-512.png">
+  <meta name="twitter:card" content="summary_large_image">
 
   <!--
-    Uncomment the tag below to lay the app out underneath the parts of the
-    screen that the device obstructs, such as a display cutout, the rounded
-    corners of the screen, or a home indicator.
-
-    Without it, the browser keeps the app clear of them, and `SafeArea` and
-    `MediaQuery.paddingOf` report no padding. With it, the app covers the whole
-    screen, and it is up to the app to keep its own content out of the way,
-    which is what `SafeArea` is for.
+    `viewport-fit=cover` lets the game draw behind display cutouts and rounded
+    corners; the Flutter side keeps HUD content inside SafeArea.
   -->
-  <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"> -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="neon_scramble">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Panda Runner">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>neon_scramble</title>
   <link rel="manifest" href="manifest.json">
+
+  <title>Panda Runner — 3D Neon Parkour</title>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #07090E;
+      color: #F1F5F9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+
+    /* Splash shown until the Flutter engine paints its first frame. */
+    #boot {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background:
+        radial-gradient(circle at 50% 42%, rgba(255, 79, 0, 0.16) 0%, rgba(11, 15, 25, 0.94) 55%, #07090E 100%);
+      z-index: 1;
+      transition: opacity 400ms ease-out;
+      pointer-events: none;
+    }
+
+    #boot.hidden { opacity: 0; }
+
+    #boot .mark {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #F1F5F9;
+      text-shadow: 0 0 22px rgba(255, 107, 26, 0.55);
+      text-align: center;
+      padding: 0 20px;
+    }
+
+    #boot .bar {
+      width: min(280px, 62vw);
+      height: 4px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(148, 163, 184, 0.22);
+    }
+
+    #boot .bar > i {
+      display: block;
+      width: 40%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #FF6B1A, #FBBC04);
+      animation: sweep 1.15s ease-in-out infinite;
+    }
+
+    #boot .hint {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #94A3B8;
+    }
+
+    @keyframes sweep {
+      0%   { transform: translateX(-105%); }
+      100% { transform: translateX(260%); }
+    }
+
+    noscript { color: #CBD5E1; text-align: center; padding: 24px; }
+  </style>
 </head>
 <body>
+  <div id="boot">
+    <div class="mark">Panda Runner</div>
+    <div class="bar"><i></i></div>
+    <div class="hint">Loading Shibuya…</div>
+  </div>
+  <noscript>Panda Runner needs JavaScript enabled to run.</noscript>
+
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -54,5 +140,21 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+
+  <script>
+    // Hide the boot splash once Flutter has painted the first frame.
+    window.addEventListener('flutter-first-frame', function () {
+      var boot = document.getElementById('boot');
+      if (!boot) return;
+      boot.classList.add('hidden');
+      setTimeout(function () { boot.remove(); }, 450);
+    });
+
+    // Block browser gestures that would scroll/zoom the game canvas.
+    window.addEventListener('contextmenu', function (e) {
+      if (e.target && e.target.tagName === 'CANVAS') e.preventDefault();
+    }, { passive: false });
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
+  </script>
 </body>
 </html>

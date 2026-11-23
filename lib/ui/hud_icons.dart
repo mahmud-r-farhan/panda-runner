@@ -63,6 +63,34 @@ class _PlayPainter extends _IconPainter {
   }
 }
 
+class PauseIcon extends StatelessWidget {
+  const PauseIcon({super.key, this.size = 14, required this.color});
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => _SvgIcon(_PausePainter(color), size);
+}
+
+class _PausePainter extends _IconPainter {
+  _PausePainter(super.color);
+
+  @override
+  void draw(Canvas canvas) {
+    final p = Paint()..color = color;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+          const Rect.fromLTWH(5.1, 2.9, 3.1, 12.2), const Radius.circular(1.1)),
+      p,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+          const Rect.fromLTWH(9.8, 2.9, 3.1, 12.2), const Radius.circular(1.1)),
+      p,
+    );
+  }
+}
+
 class CameraIcon extends StatelessWidget {
   const CameraIcon({super.key, this.size = 14, required this.color});
   final double size;

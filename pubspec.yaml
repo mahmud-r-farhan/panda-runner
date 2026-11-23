@@ -1,10 +1,11 @@
-name: neon_scramble
+name: panda_runner
 description: >-
-  Flutter Scene (Flutter GPU + WebGL2) port of the Gemini Neon Scramble demo:
-  drop into Shibuya Scramble Crossing as Pegman, weave traffic, grind Yamanote
-  rails, light up neon signs, and reach Shibuya Stream - Google Tokyo.
+  Panda Runner - a 3D neon parkour runner built with Flutter Scene
+  (Flutter GPU + WebGL2). Drop into Shibuya Scramble Crossing as a neon panda,
+  weave through traffic, grind the Yamanote rails, light up the city and reach
+  Shibuya Stream on a rooftop finish. Runs on iOS, macOS and the web.
 publish_to: 'none'
-version: 1.0.0+1
+version: 2.0.0+2
 
 environment:
   sdk: '>=3.10.0 <4.0.0'

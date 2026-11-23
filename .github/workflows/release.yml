@@ -1,0 +1,162 @@
+name: Release
+
+# Tag `vX.Y.Z` (or run manually to build artifacts without publishing) and the
+# release is assembled for you: web ZIP + macOS .dmg + macOS .zip, attached to
+# a GitHub Release with generated notes.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_CHANNEL: stable
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        run: flutter test --reporter expanded
+
+  web:
+    name: Web build
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Resolve version
+        run: |
+          VERSION="$(sed -n 's/^version: *\([^+ ]*\).*/\1/p' pubspec.yaml)"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "Packaging Panda Runner ${VERSION}"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build web
+        run: flutter build web --release --base-href /
+
+      - name: Package web ZIP
+        run: |
+          mkdir -p dist
+          cd build/web
+          zip -qr "${GITHUB_WORKSPACE}/dist/panda-runner-web.zip" .
+          cd "${GITHUB_WORKSPACE}"
+          unzip -l dist/panda-runner-web.zip | tail -5
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: dist/panda-runner-web.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  macos:
+    name: macOS build (Apple silicon)
+    needs: verify
+    runs-on: macos-14
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Resolve version
+        run: |
+          VERSION="$(sed -n 's/^version: *\([^+ ]*\).*/\1/p' pubspec.yaml)"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "Packaging Panda Runner ${VERSION}"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build macOS app
+        run: flutter build macos --release
+
+      - name: Package .app ZIP and .dmg
+        run: |
+          APP="build/macos/Build/Products/Release/panda_runner.app"
+          test -d "$APP"
+          mkdir -p dist dmgroot
+          ditto -c -k --sequesterRsrc --keepParent "$APP" \
+            "dist/PandaRunner-${VERSION}-macOS-arm64.zip"
+          cp -R "$APP" dmgroot/
+          ln -s /Applications dmgroot/Applications
+          hdiutil create -volname "Panda Runner" -srcfolder dmgroot -ov -format UDZO \
+            "dist/PandaRunner-${VERSION}-macOS-arm64.dmg"
+          shasum -a 256 dist/* | tee dist/PandaRunner-${VERSION}-macOS-arm64-SHA256SUMS.txt
+          ls -lh dist
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [web, macos]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List release assets
+        run: ls -lh dist
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          fail_on_unmatched_files: true

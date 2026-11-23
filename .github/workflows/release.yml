@@ -21,6 +21,13 @@ env:
   FLUTTER_CHANNEL: stable
 
 jobs:
+  probe-macos:
+    name: Probe macOS runner
+    runs-on: macos-14
+    steps:
+      - name: Hello
+        run: uname -a && sw_vers
+
   verify:
     name: Verify
     runs-on: ubuntu-latest

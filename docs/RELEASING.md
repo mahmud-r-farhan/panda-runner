@@ -8,9 +8,9 @@ downloadable assets plus a browser build.
 | Asset | Built by | Runs on |
 | --- | --- | --- |
 | `panda-runner-web.zip` | `release.yml` (ubuntu) | any static web server / modern browser |
-| `PandaRunner-<version>-macOS-arm64.dmg` | `release.yml` (macos-14) | macOS 12+ on Apple silicon |
-| `PandaRunner-<version>-macOS-arm64.zip` | `release.yml` (macos-14) | same, zipped `.app` for manual install |
-| `PandaRunner-<version>-macOS-arm64-SHA256SUMS.txt` | `release.yml` (macos-14) | integrity check for the two macOS files |
+| `PandaRunner-<version>-macOS-arm64.dmg` | `release.yml` (macos-latest) | macOS 12+ on Apple silicon |
+| `PandaRunner-<version>-macOS-arm64.zip` | `release.yml` (macos-latest) | same, zipped `.app` for manual install |
+| `PandaRunner-<version>-macOS-arm64-SHA256SUMS.txt` | `release.yml` (macos-latest) | integrity check for the two macOS files |
 | GitHub Pages site | `pages.yml` | `https://<owner>.github.io/panda-runner/` |
 
 The web build is also deployed to GitHub Pages on every push to `main`, so the
@@ -48,6 +48,14 @@ tags). Use it to validate the pipeline before tagging.
 
 The Pages workflow also skips cleanly when Pages has not been enabled yet
 (it emits a warning instead of failing), so `main` stays green.
+
+The macOS job runs on `macos-latest` on purpose. Pinning an image such as
+`macos-14` looks safer but fails hard once GitHub retires it — the job is then
+cancelled instantly with *"The configuration 'macos-14-arm64-us-default' is not
+supported"*. Because the browser build is what most players use, publishing only
+requires the web artifact: if the macOS job fails or never starts, the release is
+still created with `panda-runner-web.zip` and the missing asset is visible in the
+workflow run.
 
 ## Enabling GitHub Pages
 

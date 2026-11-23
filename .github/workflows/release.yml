@@ -80,7 +80,7 @@ jobs:
           unzip -l dist/panda-runner-web.zip | tail -5
 
       - name: Upload web artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: web
           path: dist/panda-runner-web.zip
@@ -90,7 +90,9 @@ jobs:
   macos:
     name: macOS build (Apple silicon)
     needs: verify
-    runs-on: macos-14
+    # macos-latest tracks the newest stable image; pinning an image such as
+    # macos-14 breaks silently once GitHub retires it.
+    runs-on: macos-latest
     timeout-minutes: 40
     steps:
       - name: Checkout
@@ -129,7 +131,7 @@ jobs:
           ls -lh dist
 
       - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: macos
           path: dist/*
@@ -138,16 +140,25 @@ jobs:
 
   publish:
     name: Publish GitHub Release
-    if: startsWith(github.ref, 'refs/tags/v')
+    # A failed or unavailable macOS runner must never block the browser build
+    # from reaching players, so this job only requires the web artifact.
+    if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') && needs.web.result == 'success' }}
     needs: [web, macos]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
+      - name: Download web artifact
+        uses: actions/download-artifact@v5
         with:
+          name: web
           path: dist
-          merge-multiple: true
+
+      - name: Download macOS artifact
+        if: needs.macos.result == 'success'
+        uses: actions/download-artifact@v5
+        with:
+          name: macos
+          path: dist
 
       - name: List release assets
         run: ls -lh dist
@@ -159,4 +170,4 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false

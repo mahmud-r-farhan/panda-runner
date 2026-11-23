@@ -21,12 +21,21 @@ env:
   FLUTTER_CHANNEL: stable
 
 jobs:
-  probe-macos:
-    name: Probe macOS runner
+  probe-14:
+    name: Probe macos-14
     runs-on: macos-14
     steps:
-      - name: Hello
-        run: uname -a && sw_vers
+      - run: sw_vers
+  probe-latest:
+    name: Probe macos-latest
+    runs-on: macos-latest
+    steps:
+      - run: sw_vers
+  probe-15:
+    name: Probe macos-15
+    runs-on: macos-15
+    steps:
+      - run: sw_vers
 
   verify:
     name: Verify

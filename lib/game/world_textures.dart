@@ -176,7 +176,7 @@ class WorldTextures {
 
   /// Port of `Ng()` wide billboard cell (512 x 256).
   static Future<fs.Texture2D> wideBillboard(String text, int index) async {
-    final sub = index.isEven ? 'NEON SCRAMBLE' : 'ネオンスクランブル';
+    final sub = index.isEven ? 'PANDA RUNNER' : 'パンダランナー';
     final key = 'wide:$text:$sub';
     if (_signCache[key] != null) return _signCache[key]!;
     const w = 512.0, h = 256.0;

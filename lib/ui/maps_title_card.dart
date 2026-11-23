@@ -7,8 +7,8 @@ import '../game/map_location.dart';
 import 'hud_icons.dart';
 import 'ui_tokens.dart';
 
-/// Interactive start card with Character Selection (3D Panda vs Pegman)
-/// and Map Location Selector (Shibuya, Kyoto Bamboo, Akihabara Cyberway).
+/// Interactive start card: runner selection (3D panda vs Pegman), sky-mood
+/// selector, best-run summary and the play button.
 class MapsTitleCard extends StatelessWidget {
   const MapsTitleCard({
     super.key,
@@ -88,9 +88,7 @@ class MapsTitleCard extends StatelessWidget {
                                   const SizedBox(width: 10),
                                   Flexible(
                                     child: Text(
-                                      currentHero == HeroCharacterType.panda
-                                          ? 'PANDA RUNNER 3D'
-                                          : 'NEON SCRAMBLE',
+                                      'PANDA RUNNER',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: Ui.ui(
@@ -110,6 +108,23 @@ class MapsTitleCard extends StatelessWidget {
                                   13,
                                   weight: FontWeight.w500,
                                   color: Ui.textStrongSub,
+                                  height: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                state.bestScore > 0
+                                    ? 'BEST ${GameState.formatInt(state.bestScore)} · ${state.runsPlayed} RUNS · ${state.bestCombo}x MAX COMBO'
+                                    : 'FIRST RUN · NO SCORE YET',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Ui.mono(
+                                  11,
+                                  weight: FontWeight.w600,
+                                  color: state.bestScore > 0
+                                      ? Ui.semanticGold
+                                      : Ui.textSecondary,
+                                  letterSpacingEm: 0.06,
                                   height: 1.2,
                                 ),
                               ),
@@ -171,7 +186,7 @@ class MapsTitleCard extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'MAP LOCATION',
+                                'SKY MOOD',
                                 style: Ui.ui(
                                   10.5,
                                   weight: FontWeight.w700,
@@ -250,6 +265,7 @@ class MapsTitleCard extends StatelessWidget {
                           (['A', 'D'], 'Lanes', true),
                           (['Space', 'W'], 'Jump / Vault', false),
                           (['S'], 'Slide', false),
+                          (['Esc'], 'Pause', false),
                         ],
                       ),
                     ),
@@ -377,11 +393,7 @@ class _LocationChoicePill extends StatelessWidget {
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
-                  location.id == MapLocationId.shibuya
-                      ? 'Shibuya'
-                      : location.id == MapLocationId.bambooForest
-                          ? 'Bamboo'
-                          : 'Cyber',
+                  location.shortName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Ui.ui(

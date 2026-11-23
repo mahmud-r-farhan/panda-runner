@@ -20,6 +20,7 @@ class HudOverlay extends StatelessWidget {
     required this.onToggleAutoPilot,
     required this.onToggleMute,
     required this.onTogglePhoto,
+    required this.onTogglePause,
     required this.onPlayAgain,
     required this.onPhotoPreset,
   });
@@ -29,6 +30,7 @@ class HudOverlay extends StatelessWidget {
   final VoidCallback onToggleAutoPilot;
   final VoidCallback onToggleMute;
   final VoidCallback onTogglePhoto;
+  final VoidCallback onTogglePause;
   final VoidCallback onPlayAgain;
   final ValueChanged<PhotoPreset> onPhotoPreset;
 
@@ -65,6 +67,7 @@ class HudOverlay extends StatelessWidget {
                   onToggleAutoPilot: onToggleAutoPilot,
                   onToggleMute: onToggleMute,
                   onTogglePhoto: onTogglePhoto,
+                  onTogglePause: onTogglePause,
                 ),
               ),
             ],
@@ -98,6 +101,13 @@ class HudOverlay extends StatelessWidget {
             right: 0,
             bottom: 28,
             child: IgnorePointer(child: Center(child: _OnboardingHint())),
+          ),
+
+        if (!photo && !finale)
+          Positioned(
+            top: 80,
+            left: 20,
+            child: IgnorePointer(child: _ShieldPips(state: state)),
           ),
 
         if (!photo && callout != null && !finale)
@@ -293,9 +303,7 @@ class _TelemetryPill extends StatelessWidget {
                   const PlasmaDot(),
                 const SizedBox(width: 8),
                 Text(
-                  state.selectedHero == HeroCharacterType.panda
-                      ? 'PANDA RUNNER'
-                      : 'NEON SCRAMBLE',
+                  'PANDA RUNNER',
                   style: Ui.ui(17,
                       weight: FontWeight.w700,
                       letterSpacingEm: .05,
@@ -477,6 +485,7 @@ class _ActionsPill extends StatelessWidget {
     required this.onToggleAutoPilot,
     required this.onToggleMute,
     required this.onTogglePhoto,
+    required this.onTogglePause,
   });
 
   final GameState state;
@@ -484,11 +493,14 @@ class _ActionsPill extends StatelessWidget {
   final VoidCallback onToggleAutoPilot;
   final VoidCallback onToggleMute;
   final VoidCallback onTogglePhoto;
+  final VoidCallback onTogglePause;
 
   @override
   Widget build(BuildContext context) {
     final pad = compact ? 10.0 : 12.0;
     final auto = state.autoPilot;
+    // Phones / narrow windows: icon-only pause so the two top pills fit.
+    final condensed = MediaQuery.sizeOf(context).width < 900;
     return GlassDock(
       height: 52,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -532,6 +544,23 @@ class _ActionsPill extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
+          _ActionButton(
+            onTap: onTogglePause,
+            hPad: condensed ? 9 : pad,
+            builder: (fg, _) => condensed
+                ? Opacity(opacity: .92, child: PauseIcon(color: fg))
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Opacity(opacity: .92, child: PauseIcon(color: fg)),
+                      const SizedBox(width: 6),
+                      Text('Pause',
+                          style: Ui.ui(13,
+                              weight: FontWeight.w500, color: fg, height: 1)),
+                    ],
+                  ),
+          ),
+          const SizedBox(width: 4),
           HoverPress(
             onTap: onToggleMute,
             builder: (context, hover) {
@@ -565,23 +594,84 @@ class _ActionsPill extends StatelessWidget {
 // Onboarding hint & action callout
 // ---------------------------------------------------------------------------
 
+/// Three-shield run health, bottom-left (clear of the minimap and callouts).
+class _ShieldPips extends StatelessWidget {
+  const _ShieldPips({required this.state});
+
+  final GameState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassDock(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('SHIELDS',
+              style: Ui.ui(9.5,
+                  weight: FontWeight.w700,
+                  color: Ui.textSecondary,
+                  letterSpacingEm: .12,
+                  height: 1)),
+          const SizedBox(width: 8),
+          for (int i = 0; i < GameState.maxShields; i++) ...[
+            if (i > 0) const SizedBox(width: 4),
+            AnimatedScale(
+              scale: i < state.shields ? 1 : .8,
+              duration: const Duration(milliseconds: 180),
+              child: AnimatedOpacity(
+                opacity: i < state.shields ? 1 : .26,
+                duration: const Duration(milliseconds: 180),
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: i < state.shields
+                        ? Ui.semanticCyan
+                        : Ui.textSecondary,
+                    boxShadow: i < state.shields
+                        ? const [
+                            BoxShadow(
+                                color: Color(0x8C38BDF8), blurRadius: 8),
+                          ]
+                        : null,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _OnboardingHint extends StatelessWidget {
   const _OnboardingHint();
 
-  // The web demo rewrites the hint at runtime to the same strip as the
-  // title card ("A / D Lanes · Space Jump / Roof Vault · S Slide").
   @override
   Widget build(BuildContext context) {
-    return const _CardReveal(
+    // Narrow/touch layouts get swipe hints, desktop keeps the key strip.
+    final touch = MediaQuery.sizeOf(context).width < 900;
+    return _CardReveal(
       child: GlassDock(
-        padding: EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
         child: ControlsStrip(
           color: Ui.textStrongSub,
-          items: [
-            (['A', 'D'], 'Lanes', true),
-            (['Space'], 'Jump / Roof Vault', false),
-            (['S'], 'Slide', false),
-          ],
+          items: touch
+              ? const [
+                  (['←', '→'], 'Swipe lanes', true),
+                  (['↑'], 'Jump / Vault', false),
+                  (['↓'], 'Slide', false),
+                ]
+              : const [
+                  (['A', 'D'], 'Lanes', true),
+                  (['Space'], 'Jump / Vault', false),
+                  (['S'], 'Slide', false),
+                  (['Esc'], 'Pause', false),
+                ],
         ),
       ),
     );

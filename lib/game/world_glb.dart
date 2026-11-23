@@ -14,7 +14,7 @@ import 'world_textures.dart';
 
 double _d(dynamic v, [double fb = 0]) => (v as num?)?.toDouble() ?? fb;
 
-const _signTexts = ['NEON', 'NEON SCRAMBLE', 'ネオン', 'ネオンスクランブル', 'ネオン・スクランブル'];
+const _signTexts = ['PANDA', 'PANDA RUNNER', 'パンダ', 'パンダランナー', 'パンダ・ランナー'];
 const _signPalette = ['#FF4F00', '#4285F4', '#EA4335', '#FBBC05', '#34A853', '#38BDF8'];
 
 /// A neon blade sign or wall billboard that ignites as Pegman approaches

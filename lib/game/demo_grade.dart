@@ -56,7 +56,7 @@ class DemoGrade {
   /// `.cube` text (red fastest) mapping sRGB(Reinhard(c)) -> grade(c).
   static String cube({int size = 64}) {
     final sb = StringBuffer()
-      ..writeln('TITLE "Neon Scramble applyAgXGolden"')
+      ..writeln('TITLE "Panda Runner applyAgXGolden"')
       ..writeln('LUT_3D_SIZE $size');
     double inv(double s) {
       final r = _srgbToLinear(s).clamp(0.0, 0.9995);

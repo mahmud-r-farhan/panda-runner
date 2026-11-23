@@ -6,7 +6,7 @@ import '../game/game_state.dart';
 import 'ui_tokens.dart';
 
 /// `.loading-screen`: radial neon glow behind a glass card with the
-/// NEON SCRAMBLE wordmark, gradient progress bar, label and percentage.
+/// Panda Runner wordmark, gradient progress bar, label and percentage.
 class LoadingScreen extends StatelessWidget {
   const LoadingScreen({super.key, required this.state});
 
@@ -55,7 +55,7 @@ class LoadingScreen extends StatelessWidget {
                         const PlasmaDot(large: true),
                         const SizedBox(width: 12),
                         Text(
-                          'NEON SCRAMBLE',
+                          'PANDA RUNNER',
                           style: Ui.ui(
                             32,
                             weight: FontWeight.w700,

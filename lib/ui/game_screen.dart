@@ -7,27 +7,33 @@ import 'package:flutter_scene/scene.dart' as fs;
 import '../game/game_state.dart';
 import '../game/shibuya_scene_controller.dart';
 import '../game/sound_fx.dart';
+import 'game_over_card.dart';
 import 'hud_overlay.dart';
 import 'loading_screen.dart';
 import 'maps_title_card.dart';
+import 'pause_overlay.dart';
 import 'shibuya_map_view.dart';
 import 'speed_lines.dart';
 
-/// Hosts the Flutter Scene view, the frame ticker, keyboard (A/D, Space,
-/// S, P, 1-3, Esc) and touch/swipe input, and the 2D overlays.
+/// Hosts the Flutter Scene view, the frame ticker, keyboard and touch input,
+/// and the 2D overlays.
+///
+/// Controls: `A`/`D` or `←`/`→` lanes · `Space`/`W`/`↑` jump & roof vault ·
+/// `S`/`↓` slide · `P` photo mode · `Esc` pause · `R` restart · `Q` map ·
+/// `M` mute. Touch: swipe left/right/up/down.
 ///
 /// Debug URL parameters (web): `?autoplay=1` starts a run with Auto-Pilot,
 /// `&seek=0.5` jumps to that route fraction after landing,
 /// `&photo=skyline` opens photo mode with a preset.
-class NeonScrambleGameScreen extends StatefulWidget {
-  const NeonScrambleGameScreen({super.key});
+class PandaRunnerGameScreen extends StatefulWidget {
+  const PandaRunnerGameScreen({super.key});
 
   @override
-  State<NeonScrambleGameScreen> createState() => _NeonScrambleGameScreenState();
+  State<PandaRunnerGameScreen> createState() => _PandaRunnerGameScreenState();
 }
 
-class _NeonScrambleGameScreenState extends State<NeonScrambleGameScreen>
-    with SingleTickerProviderStateMixin {
+class _PandaRunnerGameScreenState extends State<PandaRunnerGameScreen>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final GameState _state;
   late final SoundFx _soundFx;
   late final ShibuyaSceneController _controller;
@@ -38,22 +44,61 @@ class _NeonScrambleGameScreenState extends State<NeonScrambleGameScreen>
   Offset? _dragStart;
   bool _swipeHandled = false;
 
-  // debug params
+  // Debug params, parsed once. Real players have an empty query string, so
+  // the per-frame path below stays allocation- and parse-free.
   final Map<String, String> _q = Uri.base.queryParameters;
+  late final bool _fixDt = _q['fixdt'] == '1';
+  late final bool _freeze = _q['freeze'] == '1';
+  late final int _simSteps = (int.tryParse(_q['sim'] ?? '') ?? 1).clamp(1, 32);
+  late final int? _stopFrame = int.tryParse(_q['stopframe'] ?? '');
+  late final double? _stopAt = double.tryParse(_q['stopat'] ?? '');
   bool _autoStarted = false;
   bool _seekDone = false;
   bool _stopped = false;
   bool _stopAfterNext = false;
   int _runFrames = 0;
 
+  // Coarse render tracking: the 3D layer is only rebuilt when the phase or
+  // scene readiness changes, never on a simulation frame.
+  AppPhase? _builtPhase;
+  bool? _builtInitialized;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _state = GameState();
-    _soundFx = SoundFx();
+    _soundFx = SoundFx()..muted = _state.muted;
     _controller = ShibuyaSceneController(state: _state, soundFx: _soundFx);
     _controller.initialize();
+    // Listen after the first frame: `initialize()` reports loading progress
+    // synchronously, which must not call setState during initState.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _state.addListener(_onCoarseStateChanged);
+    });
     _ticker = createTicker(_onTick)..start();
+  }
+
+  /// Rebuilds the screen (and therefore the 3D layer) only when the app phase
+  /// or scene readiness changes. The HUD listens to [GameState] separately and
+  /// still updates every frame.
+  void _onCoarseStateChanged() {
+    if (!mounted) return;
+    if (_state.phase == _builtPhase &&
+        _controller.initialized == _builtInitialized) {
+      return;
+    }
+    setState(() {});
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
+    if (lifecycle == AppLifecycleState.resumed) return;
+    // Backgrounding the app pauses the run, so nobody returns to a crash.
+    if (_state.isGameplay && !_state.paused && !_state.photoMode) {
+      _state.pause();
+      _soundFx.setPaused(true);
+    }
   }
 
   void _onTick(Duration elapsed) {
@@ -62,17 +107,17 @@ class _NeonScrambleGameScreenState extends State<NeonScrambleGameScreen>
       return;
     }
     var dt = ((elapsed - _lastTick).inMicroseconds / 1e6).clamp(0.0, 0.05);
+    _lastTick = elapsed;
+    // Paused: the frame stays frozen, no simulation and no repaint cost.
+    if (_state.paused) return;
     // `&fixdt=1`: step exactly 1/60 s per frame (like the demo's
     // `__advanceFrame`) so debug captures match 60 fps behaviour.
-    if (_q['fixdt'] == '1') dt = 1 / 60;
-    _lastTick = elapsed;
-    _debugHooks();
-    // `?sim=N` runs N simulation substeps per frame (debug fast-forward).
-    final sub = int.tryParse(_q['sim'] ?? '') ?? 1;
+    if (_fixDt) dt = 1 / 60;
+    if (_q.isNotEmpty) _debugHooks();
     // `&freeze=1` holds the frame right after a seek (debug captures).
-    if (_q['freeze'] == '1' && _seekDone) return;
+    if (_freeze && _seekDone) return;
     if (_stopped) return;
-    for (int i = 0; i < sub; i++) {
+    for (int i = 0; i < _simSteps; i++) {
       _controller.tick(dt);
     }
     if (_stopAfterNext) {
@@ -91,12 +136,12 @@ class _NeonScrambleGameScreenState extends State<NeonScrambleGameScreen>
     // reaches that route distance (debug captures of in-motion FX).
     // `&stopframe=N`: hold after N ticks of the run (sky-drop captures).
     if (_state.phase != AppPhase.mapsTitle && _state.phase != AppPhase.loading) _runFrames++;
-    final stopFrame = int.tryParse(_q['stopframe'] ?? '');
+    final stopFrame = _stopFrame;
     if (stopFrame != null && _runFrames >= stopFrame) {
       _stopped = true;
       debugPrint('stopped: frame=$_runFrames s=${_controller.sim.s.toStringAsFixed(1)}');
     }
-    final stopAt = double.tryParse(_q['stopat'] ?? '');
+    final stopAt = _stopAt;
     if (stopAt != null && _seekDone && _controller.sim.s >= stopAt) {
       _stopped = true;
       final c = _controller;
@@ -199,6 +244,8 @@ class _NeonScrambleGameScreenState extends State<NeonScrambleGameScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _state.removeListener(_onCoarseStateChanged);
     _ticker.dispose();
     _focusNode.dispose();
     _controller.dispose();
@@ -208,13 +255,41 @@ class _NeonScrambleGameScreenState extends State<NeonScrambleGameScreen>
   }
 
   void _play() {
-    _soundFx.startMusic();
+    _state.resume();
+    _soundFx
+      ..setPaused(false)
+      ..startMusic();
     _focusNode.requestFocus();
     _controller.startNewRun();
   }
 
+  void _togglePause() {
+    if (!_state.isGameplay || _state.photoMode) return;
+    _state.togglePause();
+    _soundFx.setPaused(_state.paused);
+    _focusNode.requestFocus();
+  }
+
+  void _resume() {
+    if (!_state.paused) return;
+    _state.resume();
+    _soundFx.setPaused(false);
+    _focusNode.requestFocus();
+  }
+
+  void _toggleMute() {
+    _state.toggleMute();
+    _soundFx.muted = _state.muted;
+  }
+
+  void _quitToTitle() {
+    _soundFx.setPaused(false);
+    _controller.quitToTitle();
+    _focusNode.requestFocus();
+  }
+
   void _togglePhoto() {
-    if (!_state.isGameplay) return;
+    if (!_state.isGameplay || _state.paused) return;
     _controller.resetPhotoCamera();
     _state.togglePhotoMode();
     if (_state.photoMode) _soundFx.play('photo_shutter');
@@ -223,12 +298,18 @@ class _NeonScrambleGameScreenState extends State<NeonScrambleGameScreen>
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is KeyUpEvent) {
       final k = event.logicalKey;
-      if (k == LogicalKeyboardKey.keyA || k == LogicalKeyboardKey.arrowLeft) _controller.releaseLane(-1);
-      if (k == LogicalKeyboardKey.keyD || k == LogicalKeyboardKey.arrowRight) _controller.releaseLane(1);
+      if (k == LogicalKeyboardKey.keyA || k == LogicalKeyboardKey.arrowLeft) {
+        _controller.releaseLane(-1);
+      }
+      if (k == LogicalKeyboardKey.keyD || k == LogicalKeyboardKey.arrowRight) {
+        _controller.releaseLane(1);
+      }
       return KeyEventResult.ignored;
     }
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final k = event.logicalKey;
+
+    // Title / map screen: start a run.
     if (_state.phase == AppPhase.mapsTitle) {
       if (k == LogicalKeyboardKey.space || k == LogicalKeyboardKey.enter) {
         _play();
@@ -236,13 +317,64 @@ class _NeonScrambleGameScreenState extends State<NeonScrambleGameScreen>
       }
       return KeyEventResult.ignored;
     }
+
+    // Game over: retry or go back to the map.
+    if (_state.phase == AppPhase.gameOver) {
+      if (k == LogicalKeyboardKey.keyR ||
+          k == LogicalKeyboardKey.enter ||
+          k == LogicalKeyboardKey.space) {
+        _play();
+        return KeyEventResult.handled;
+      }
+      if (k == LogicalKeyboardKey.keyQ || k == LogicalKeyboardKey.escape) {
+        _quitToTitle();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    // Escape always means "back out of the current modal state".
+    if (k == LogicalKeyboardKey.escape) {
+      if (_state.photoMode) {
+        _togglePhoto();
+      } else {
+        _togglePause();
+      }
+      return KeyEventResult.handled;
+    }
+
+    if (_state.paused) {
+      if (k == LogicalKeyboardKey.enter ||
+          k == LogicalKeyboardKey.space ||
+          k == LogicalKeyboardKey.keyP) {
+        _resume();
+        return KeyEventResult.handled;
+      }
+      if (k == LogicalKeyboardKey.keyR) {
+        _play();
+        return KeyEventResult.handled;
+      }
+      if (k == LogicalKeyboardKey.keyQ) {
+        _quitToTitle();
+        return KeyEventResult.handled;
+      }
+      if (k == LogicalKeyboardKey.keyM) {
+        _toggleMute();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
     if (k == LogicalKeyboardKey.keyP) {
       _togglePhoto();
     } else if (_state.photoMode) {
-      if (k == LogicalKeyboardKey.escape) _togglePhoto();
       if (k == LogicalKeyboardKey.digit1) _state.setPhotoPreset(PhotoPreset.hero);
-      if (k == LogicalKeyboardKey.digit2) _state.setPhotoPreset(PhotoPreset.scramble);
+      if (k == LogicalKeyboardKey.digit2) {
+        _state.setPhotoPreset(PhotoPreset.scramble);
+      }
       if (k == LogicalKeyboardKey.digit3) _state.setPhotoPreset(PhotoPreset.skyline);
+    } else if (k == LogicalKeyboardKey.keyM) {
+      _toggleMute();
     } else if (k == LogicalKeyboardKey.keyA || k == LogicalKeyboardKey.arrowLeft) {
       _controller.moveLane(-1);
     } else if (k == LogicalKeyboardKey.keyD || k == LogicalKeyboardKey.arrowRight) {
@@ -288,6 +420,13 @@ class _NeonScrambleGameScreenState extends State<NeonScrambleGameScreen>
 
   @override
   Widget build(BuildContext context) {
+    final showScene =
+        _controller.initialized && _state.phase != AppPhase.mapsTitle;
+    // Remember what this build was based on: `_onCoarseStateChanged` only
+    // asks for another one when the phase or scene readiness changes.
+    _builtPhase = _state.phase;
+    _builtInitialized = _controller.initialized;
+
     return Scaffold(
       backgroundColor: const Color(0xFF07090E),
       body: Focus(
@@ -305,62 +444,103 @@ class _NeonScrambleGameScreenState extends State<NeonScrambleGameScreen>
             onTap: () => _focusNode.requestFocus(),
             onPanStart: _onPanStart,
             onPanUpdate: _onPanUpdate,
-            child: AnimatedBuilder(
-              animation: _state,
-              builder: (context, _) {
-                final title = _state.phase == AppPhase.mapsTitle;
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (_controller.initialized && !title)
-                      fs.SceneView(
-                        _controller.scene,
-                        cameraBuilder: _controller.buildCamera,
-                      ),
-                    if (_controller.initialized && !title) const VignetteOverlay(),
-                    if (_controller.initialized && !title)
-                      SpeedLinesOverlay(
-                        factor: _controller.speedLinesFactor,
-                        time: _controller.time,
-                      ),
-                    if (_controller.initialized && title)
-                      ShibuyaMapView(
-                        level: _controller.level,
-                        time: _state.elapsed,
-                      ),
-                    if (title)
-                      MapsTitleCard(
-                        state: _state,
-                        onPlay: _play,
-                        onSelectLocation: (loc) {
-                          _state.selectLocation(loc);
-                          _controller.updateLocation(loc);
-                        },
-                        onSelectHero: (hero) {
-                          _state.selectHero(hero);
-                        },
-                      ),
-                    if (_state.isGameplay)
-                      HudOverlay(
-                        state: _state,
-                        level: _controller.level,
-                        onToggleAutoPilot: _state.toggleAutoPilot,
-                        onToggleMute: () {
-                          _state.toggleMute();
-                          _soundFx.muted = _state.muted;
-                        },
-                        onTogglePhoto: _togglePhoto,
-                        onPlayAgain: _play,
-                        onPhotoPreset: _state.setPhotoPreset,
-                      ),
-                    if (_state.phase == AppPhase.loading)
-                      LoadingScreen(state: _state),
-                  ],
-                );
-              },
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // 3D scene + static post FX: rebuilt on phase changes only.
+                if (showScene) _SceneLayer(controller: _controller),
+                // 2D overlays: this layer re-renders every simulation frame,
+                // the 3D scene above does not.
+                AnimatedBuilder(
+                  animation: _state,
+                  builder: (context, _) => _buildOverlays(),
+                ),
+              ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildOverlays() {
+    final title = _state.phase == AppPhase.mapsTitle;
+    final ready = _controller.initialized;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (ready && !title)
+          IgnorePointer(
+            child: SpeedLinesOverlay(
+              factor: _controller.speedLinesFactor,
+              time: _controller.time,
+            ),
+          ),
+        if (ready && title)
+          ShibuyaMapView(level: _controller.level, time: _state.elapsed),
+        if (title)
+          MapsTitleCard(
+            state: _state,
+            onPlay: _play,
+            onSelectLocation: (loc) {
+              _state.selectLocation(loc);
+              _controller.updateLocation(loc);
+            },
+            onSelectHero: (hero) => _state.selectHero(hero),
+          ),
+        if (_state.isGameplay)
+          HudOverlay(
+            state: _state,
+            level: _controller.level,
+            onToggleAutoPilot: _state.toggleAutoPilot,
+            onToggleMute: _toggleMute,
+            onTogglePhoto: _togglePhoto,
+            onTogglePause: _togglePause,
+            onPlayAgain: _play,
+            onPhotoPreset: _state.setPhotoPreset,
+          ),
+        if (_state.phase == AppPhase.gameOver)
+          GameOverCard(
+            state: _state,
+            onRestart: _play,
+            onQuit: _quitToTitle,
+          ),
+        if (_state.paused)
+          PauseOverlay(
+            state: _state,
+            onResume: _resume,
+            onRestart: _play,
+            onQuit: _quitToTitle,
+            onToggleMute: _toggleMute,
+          ),
+        if (_state.phase == AppPhase.loading) LoadingScreen(state: _state),
+      ],
+    );
+  }
+}
+
+/// The 3D scene plus its static full-screen post effects.
+///
+/// Living in its own widget keeps [fs.SceneView] out of the per-frame HUD
+/// rebuild, so the scene widget, its camera-builder closure and its layer are
+/// only re-created when the app phase changes.
+class _SceneLayer extends StatelessWidget {
+  const _SceneLayer({required this.controller});
+
+  final ShibuyaSceneController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          fs.SceneView(
+            controller.scene,
+            cameraBuilder: controller.buildCamera,
+          ),
+          const VignetteOverlay(),
+        ],
       ),
     );
   }

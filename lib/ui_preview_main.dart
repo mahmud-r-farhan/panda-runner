@@ -1,6 +1,6 @@
 // Throwaway visual harness for the 2D overlays (no 3D scene).
 // Build: flutter build web -t lib/ui_preview_main.dart -o build/preview
-// Views: ?view=loading|title|hud|finale|photo|callout|skydrop
+// Views: ?view=loading|title|hud|finale|photo|callout|skydrop|pause|gameover
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -8,9 +8,12 @@ import 'package:flutter/scheduler.dart';
 
 import 'game/game_state.dart';
 import 'game/level_data.dart';
+import 'game/save_store.dart';
+import 'ui/game_over_card.dart';
 import 'ui/hud_overlay.dart';
 import 'ui/loading_screen.dart';
 import 'ui/maps_title_card.dart';
+import 'ui/pause_overlay.dart';
 import 'ui/shibuya_map_view.dart';
 
 Future<void> main() async {
@@ -33,7 +36,7 @@ class _Preview extends StatefulWidget {
 }
 
 class _PreviewState extends State<_Preview> with SingleTickerProviderStateMixin {
-  final GameState s = GameState();
+  final GameState s = GameState(saveStore: InMemorySaveStore());
   late final Ticker _ticker;
   double _t = 0;
 
@@ -79,6 +82,28 @@ class _PreviewState extends State<_Preview> with SingleTickerProviderStateMixin 
           s.speedKmh = 152;
           s.showCallout('BOOST RING', bonus: '+1,500', accent: CalloutAccent.gold);
         }
+      case 'pause':
+        s.finishLoading();
+        s.beginRun();
+        s.landFromSkyDrop();
+        at(420);
+        s.score = 20450;
+        s.speedKmh = 96;
+        s.combo = 4;
+        s.shields = 2;
+        s.pause();
+      case 'gameover':
+        s.finishLoading();
+        s.beginRun();
+        s.landFromSkyDrop();
+        at(680);
+        s.score = 31520;
+        s.speedKmh = 0;
+        s.maxSpeedKmh = 151;
+        s.runTimeSec = 18.4;
+        s.combo = 6;
+        s.shields = 0;
+        s.endRun();
       case 'finale':
       case 'photo':
         s.finishLoading();
@@ -146,9 +171,20 @@ class _PreviewState extends State<_Preview> with SingleTickerProviderStateMixin 
             onToggleAutoPilot: () => setState(s.toggleAutoPilot),
             onToggleMute: () => setState(s.toggleMute),
             onTogglePhoto: () => setState(s.togglePhotoMode),
+            onTogglePause: () => setState(s.togglePause),
             onPlayAgain: () {},
             onPhotoPreset: (p) => setState(() => s.setPhotoPreset(p)),
           ),
+          if (v == 'pause')
+            PauseOverlay(
+              state: s,
+              onResume: () {},
+              onRestart: () {},
+              onQuit: () {},
+              onToggleMute: () {},
+            ),
+          if (v == 'gameover')
+            GameOverCard(state: s, onRestart: () {}, onQuit: () {}),
         ],
       ),
     );

@@ -5,16 +5,16 @@ import 'ui/game_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const NeonScrambleApp());
+  runApp(const PandaRunnerApp());
 }
 
-class NeonScrambleApp extends StatelessWidget {
-  const NeonScrambleApp({super.key});
+class PandaRunnerApp extends StatelessWidget {
+  const PandaRunnerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'PANDA RUNNER — 3D Neon Parkour Runner',
+      title: 'Panda Runner — 3D Neon Parkour',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: NeonPalette.bgDark,
@@ -24,7 +24,7 @@ class NeonScrambleApp extends StatelessWidget {
           surface: NeonPalette.cardBg,
         ),
       ),
-      home: const NeonScrambleGameScreen(),
+      home: const PandaRunnerGameScreen(),
     );
   }
 }

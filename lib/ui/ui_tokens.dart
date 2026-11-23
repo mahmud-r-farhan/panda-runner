@@ -3,7 +3,7 @@ import 'dart:ui' as dui;
 import 'package:flutter/material.dart';
 
 /// Design tokens copied from the web demo's CSS custom properties
-/// (`:root` in neon-scramble.ai.studio's stylesheet).
+/// (`:root` in the original neon-scramble.ai.studio stylesheet).
 abstract final class Ui {
   static const String fontUi = 'Inter';
   static const String fontDisplay = 'Inter';

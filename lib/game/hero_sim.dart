@@ -473,6 +473,14 @@ class HeroSim {
     if (state.phase == AppPhase.mapsTitle || state.phase == AppPhase.loading) {
       return;
     }
+    if (state.phase == AppPhase.gameOver) {
+      // The run is over: bleed off speed where the panda fell, keep traffic
+      // and the camera alive for the game-over card backdrop.
+      speed = math.max(0, speed - 42 * dt);
+      stumbleTimer = 0;
+      _syncState(dt);
+      return;
+    }
     if (hitStop > 0) {
       hitStop = math.max(0, hitStop - dt);
       return;

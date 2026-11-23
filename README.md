@@ -17,7 +17,7 @@ finish on the Shibuya Stream rooftop.
 
 | Platform | How |
 | --- | --- |
-| **Browser** (Windows, macOS, Linux, Chromebook, Android, iOS) | **[mahmud-r-farhan.github.io/panda-runner](https://mahmud-r-farhan.github.io/panda-runner/)** — no install, works fullscreen and offline after the first load |
+| **Browser** (Windows, macOS, Linux, Chromebook, Android, iOS) | **[mahmud-r-farhan.github.io/panda-runner](https://mahmud-r-farhan.github.io/panda-runner/)** — no install, fullscreen, offline after the first load (live once Pages is enabled, see below) |
 | **macOS 12+** (Apple silicon) | Download `PandaRunner-*-macOS-arm64.dmg` from [Releases](https://github.com/mahmud-r-farhan/panda-runner/releases) |
 | **Self-hosted web** | Download `panda-runner-web.zip`, unzip, serve the folder with any static server |
 | **iOS 15+** | Build from source (`flutter run -d ios --enable-flutter-gpu`); store build needs your own signing |

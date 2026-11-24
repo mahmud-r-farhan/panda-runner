@@ -3,13 +3,13 @@ description: >-
   Panda Runner - a 3D neon parkour runner built with Flutter Scene
   (Flutter GPU + WebGL2). Drop into Shibuya Scramble Crossing as a neon panda,
   weave through traffic, grind the Yamanote rails, light up the city and reach
-  Shibuya Stream on a rooftop finish. Runs on iOS, macOS and the web.
+  Shibuya Stream on a rooftop finish. Runs on Android, iOS, macOS, Windows and the web.
 publish_to: 'none'
-version: 2.0.0+2
+version: 2.1.0+3
 
 environment:
   sdk: '>=3.10.0 <4.0.0'
-  flutter: '>=3.47.0'
+  flutter: '>=3.47.1'
 
 dependencies:
   audioplayers: ^6.8.1

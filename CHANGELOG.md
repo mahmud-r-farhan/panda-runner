@@ -4,6 +4,24 @@ All notable changes to Panda Runner are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project uses [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] — 2026-11-24
+
+Native Android and Windows builds join the existing web and Apple-platform releases.
+
+### Added
+
+- **Android target**: generated Flutter runner with Flutter GPU enabled, branded launcher icons, per-ABI release APKs,
+  and optional upload-key signing for a Play Store App Bundle.
+- **Windows x64 target**: Flutter GPU-enabled native runner, branded app icon/title, and a zipped release build.
+- **Native platform setup**: an idempotent configurator for GPU flags, app identity, icons, and Android signing; CI builds
+  both new targets on pull requests and attaches successful artifacts to GitHub Releases.
+- **Platform setup tests** for Android manifest/Gradle configuration and Windows runner configuration.
+
+### Changed
+
+- Require Flutter 3.47.1 or newer so the Windows runner can enable Flutter GPU in release builds.
+- Document Android sideload signing limits and Windows/Android build requirements.
+
 ## [2.0.0] — 2026-11-23
 
 The "shippable game" release: rebranded from the Neon Scramble port to **Panda

@@ -1,8 +1,8 @@
 name: Release
 
-# Tag `vX.Y.Z` (or run manually to build artifacts without publishing) and the
-# release is assembled for you: web ZIP + macOS .dmg + macOS .zip, attached to
-# a GitHub Release with generated notes.
+# Tag `vX.Y.Z` (or run manually to build artifacts without publishing). A tag
+# builds the web ZIP, Android APKs (and an optional signed AAB), Windows ZIP,
+# and macOS .dmg/.zip, then attaches every successful build to the GitHub Release.
 
 on:
   push:
@@ -37,6 +37,9 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Test native runner configuration
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
       - name: Analyze
         run: flutter analyze --no-fatal-infos
@@ -138,12 +141,168 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  android:
+    name: Android build (APK)
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Resolve version
+        run: |
+          VERSION="$(sed -n 's/^version: *\([^+ ]*\).*/\1/p' pubspec.yaml)"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "Packaging Panda Runner ${VERSION}"
+
+      - name: Generate and configure native runners
+        run: |
+          flutter create . --platforms=android,windows --project-name=panda_runner --org=dev.pandarunner
+          python scripts/configure_native_platforms.py
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Configure optional Android release signing
+        id: signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            if [ -n "$ANDROID_KEY_ALIAS$ANDROID_KEY_PASSWORD$ANDROID_STORE_PASSWORD" ]; then
+              echo "error: configure all four Android signing secrets or none of them." >&2
+              exit 1
+            fi
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No Android upload key configured; building debug-key-signed sideload APKs only."
+            exit 0
+          fi
+          if [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ] || [ -z "$ANDROID_STORE_PASSWORD" ]; then
+            echo "error: configure ANDROID_KEYSTORE_BASE64, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD and ANDROID_STORE_PASSWORD together." >&2
+            exit 1
+          fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
+          cat > android/key.properties <<EOF
+          storeFile=app/release-key.jks
+          storePassword=${ANDROID_STORE_PASSWORD}
+          keyAlias=${ANDROID_KEY_ALIAS}
+          keyPassword=${ANDROID_KEY_PASSWORD}
+          EOF
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build Android APKs
+        run: flutter build apk --release --split-per-abi
+
+      - name: Build signed Android App Bundle
+        if: steps.signing.outputs.configured == 'true'
+        run: flutter build appbundle --release
+
+      - name: Package Android artifacts and checksums
+        env:
+          ANDROID_SIGNING_CONFIGURED: ${{ steps.signing.outputs.configured }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for ABI in armeabi-v7a arm64-v8a x86_64; do
+            SOURCE="build/app/outputs/flutter-apk/app-${ABI}-release.apk"
+            test -f "$SOURCE"
+            cp "$SOURCE" "dist/PandaRunner-${VERSION}-Android-${ABI}.apk"
+          done
+          if [ "$ANDROID_SIGNING_CONFIGURED" = "true" ]; then
+            cp build/app/outputs/bundle/release/app-release.aab \
+              "dist/PandaRunner-${VERSION}-Android.aab"
+          fi
+          sha256sum dist/* | tee "dist/PandaRunner-${VERSION}-Android-SHA256SUMS.txt"
+          ls -lh dist
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: android
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    name: Windows build (x64)
+    needs: verify
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Resolve version
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:\s*').Line -replace '^version:\s*([^+ ]+).*$', '$1'
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Output "Packaging Panda Runner $version"
+
+      - name: Generate and configure native runners
+        run: |
+          flutter create . --platforms=android,windows --project-name=panda_runner --org=dev.pandarunner
+          python scripts/configure_native_platforms.py
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Package Windows ZIP and checksum
+        shell: pwsh
+        run: |
+          $releaseDir = "build/windows/x64/runner/Release"
+          $exe = Join-Path $releaseDir "panda_runner.exe"
+          if (!(Test-Path $exe)) { throw "Expected Windows executable not found: $exe" }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $zip = "dist/PandaRunner-$env:VERSION-Windows-x64.zip"
+          Compress-Archive -Path "$releaseDir\*" -DestinationPath $zip -Force
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $(Split-Path $zip -Leaf)" | Set-Content -Path "$zip.sha256" -Encoding ascii
+          Get-ChildItem dist | Select-Object Name, Length
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: windows
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+
   publish:
     name: Publish GitHub Release
-    # A failed or unavailable macOS runner must never block the browser build
-    # from reaching players, so this job only requires the web artifact.
+    # A failed or unavailable native runner must not block the browser build.
+    # Successful Android, Windows and macOS artifacts are attached individually.
     if: ${{ !cancelled() && startsWith(github.ref, 'refs/tags/v') && needs.web.result == 'success' }}
-    needs: [web, macos]
+    needs: [web, macos, android, windows]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -153,11 +312,25 @@ jobs:
           name: web
           path: dist
 
-      - name: Download macOS artifact
+      - name: Download macOS artifacts
         if: needs.macos.result == 'success'
         uses: actions/download-artifact@v5
         with:
           name: macos
+          path: dist
+
+      - name: Download Android artifacts
+        if: needs.android.result == 'success'
+        uses: actions/download-artifact@v5
+        with:
+          name: android
+          path: dist
+
+      - name: Download Windows artifacts
+        if: needs.windows.result == 'success'
+        uses: actions/download-artifact@v5
+        with:
+          name: windows
           path: dist
 
       - name: List release assets

@@ -2,8 +2,10 @@
 
 Panda Runner is a single Flutter application that renders a 3D scene with
 [`flutter_scene`](https://pub.dev/packages/flutter_scene) and composites a 2D
-game HUD on top of it. The same Dart code runs on iOS/macOS (Impeller + Flutter
-GPU) and on the web (WebGL2).
+game HUD on top of it. The same Dart code runs on Android/iOS/macOS/Windows
+(Impeller + Flutter GPU) and on the web (WebGL2). Android and Windows runner
+projects are generated from the installed Flutter SDK by `setup.sh` and configured
+with `scripts/configure_native_platforms.py`.
 
 ```
 lib/main.dart                  PandaRunnerApp → PandaRunnerGameScreen
@@ -102,7 +104,7 @@ summary takes over.
 
 | Target | Implementation | Backing store |
 | --- | --- | --- |
-| iOS, macOS, desktop | `save_store_io.dart` | `$HOME/.panda_runner/save.json` |
+| Android, iOS, macOS, Windows | `save_store_io.dart` | `.panda_runner/save.json` under the user home (`USERPROFILE` on Windows) |
 | Web (JS) | `save_store_web.dart` | `window.localStorage` |
 | Web (Wasm) / anything else | `save_store_stub.dart` | memory only |
 
@@ -131,4 +133,6 @@ Persisted keys: `best_score`, `best_combo`, `runs_played`, `runs_completed`,
 `test/game_test.dart` covers state defaults, combo scoring, shield depletion,
 run banking, pause semantics, title reset and the persistence round-trip. The
 3D layer is intentionally not widget-tested (it needs a GPU-backed scene), but
-`flutter analyze` and the CI web build compile the whole graph on every PR.
+`flutter analyze` and the CI web, Android and Windows builds compile the whole
+Dart/native integration on every PR. The native runner configurator has a
+separate standard-library Python test suite.

@@ -7,7 +7,7 @@ finish on the Shibuya Stream rooftop.
 [![CI](https://github.com/mahmud-r-farhan/panda-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/mahmud-r-farhan/panda-runner/actions/workflows/ci.yml)
 [![Release](https://github.com/mahmud-r-farhan/panda-runner/actions/workflows/release.yml/badge.svg)](https://github.com/mahmud-r-farhan/panda-runner/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-FF6B1A.svg)](LICENSE)
-[![Flutter](https://img.shields.io/badge/Flutter-3.47%2B-02569B.svg)](https://flutter.dev)
+[![Flutter](https://img.shields.io/badge/Flutter-3.47.1%2B-02569B.svg)](https://flutter.dev)
 
 <p align="center">
   <img src="assets/branding/icon_square.png" width="160" alt="Panda Runner app icon">
@@ -18,6 +18,8 @@ finish on the Shibuya Stream rooftop.
 | Platform | How |
 | --- | --- |
 | **Browser** (Windows, macOS, Linux, Chromebook, Android, iOS) | **[mahmud-r-farhan.github.io/panda-runner](https://mahmud-r-farhan.github.io/panda-runner/)** — no install, fullscreen, offline after the first load (live once Pages is enabled, see below) |
+| **Android** | Download the matching ABI APK (`arm64-v8a`, `armeabi-v7a` or `x86_64`) from [Releases](https://github.com/mahmud-r-farhan/panda-runner/releases) |
+| **Windows x64** | Download `PandaRunner-*-Windows-x64.zip` from [Releases](https://github.com/mahmud-r-farhan/panda-runner/releases), extract and run `panda_runner.exe` |
 | **macOS 12+** (Apple silicon) | Download `PandaRunner-*-macOS-arm64.dmg` from [Releases](https://github.com/mahmud-r-farhan/panda-runner/releases) |
 | **Self-hosted web** | Download `panda-runner-web.zip`, unzip, serve the folder with any static server |
 | **iOS 15+** | Build from source (`flutter run -d ios --enable-flutter-gpu`); store build needs your own signing |
@@ -27,6 +29,10 @@ finish on the Shibuya Stream rooftop.
 >
 > The macOS app is unsigned. If Gatekeeper blocks the first launch, right-click the app → **Open**, or run
 > `xattr -dr com.apple.quarantine /Applications/PandaRunner.app`.
+>
+> Android APKs are for sideloading. Unless maintainers configure the optional Android signing secrets, CI uses a
+> disposable debug key; those APKs are not Play Store uploads and may require uninstalling before installing a later
+> CI build. See [`docs/RELEASING.md`](docs/RELEASING.md) for signing setup.
 
 ## What you actually do
 
@@ -55,7 +61,7 @@ and roof vaults; a crash halves the combo and kills your speed.
 | Rooftop pin | 1,000 × combo |
 
 Your best score, run count and best combo persist locally (`localStorage` on web, `~/.panda_runner/save.json` on
-desktop/iOS) and are shown on the title card, pause sheet and game-over card.
+Android/iOS/desktop, under your user profile on Windows) and are shown on the title card, pause sheet and game-over card.
 
 ## Controls
 
@@ -89,18 +95,25 @@ Photo mode: drag to orbit, scroll/pinch to zoom, three presets (Hero, Scramble, 
 
 ## Build from source
 
-Requirements: **Flutter 3.47 stable or newer** (Dart 3.10+). Nothing else — no native toolchains beyond the platform
-you target.
+Requirements: **Flutter 3.47.1 stable or newer** (Dart 3.10+). Native targets also need their usual toolchains:
+Android SDK/JDK for Android, Visual Studio with the Desktop development with C++ workload for Windows, and Xcode
+for iOS/macOS.
 
 ```bash
 git clone https://github.com/mahmud-r-farhan/panda-runner.git
 cd panda-runner
-flutter pub get
+bash setup.sh  # generates any missing native runners, configures GPU/branding, fetches packages and runs tests
 ```
 
 ```bash
 # Web (WebGL2; no extra flags)
 flutter run -d chrome
+
+# Android (Flutter GPU is enabled in the generated Android manifest)
+flutter run -d android
+
+# Windows (Flutter GPU is enabled in the generated C++ runner; build on Windows)
+flutter run -d windows
 
 # macOS (Impeller + Flutter GPU / Metal)
 flutter run -d macos --enable-flutter-gpu
@@ -111,26 +124,38 @@ flutter run -d ios --enable-flutter-gpu
 # Production web build
 flutter build web --release --base-href /
 
+# Production Android APKs (armv7, arm64 and x64)
+flutter build apk --release --split-per-abi
+
+# Production Windows build (run on Windows)
+flutter build windows --release
+
 # Production macOS build
 flutter build macos --release
 ```
 
-`setup.sh` regenerates the iOS/macOS/web platform stubs and injects the `FLTEnableFlutterGPU` flag into both
-`Info.plist` files. Everything else (3D geometry, textures, animation) is code.
+`setup.sh` regenerates missing iOS/macOS/web/Android/Windows platform runners, preserves existing Apple project
+customizations, and calls [`scripts/configure_native_platforms.py`](scripts/configure_native_platforms.py) to set
+Android's `EnableFlutterGPU` manifest flag, Windows' `DartProject` GPU flag, the app IDs and native icons. Flutter Scene
+uses Flutter GPU on native platforms and its WebGL2 backend on web. Everything else (3D geometry, textures, animation)
+is code.
 
 ### Tests & analysis
 
 ```bash
 flutter analyze
 flutter test
+python3 -m unittest discover -s scripts -p 'test_*.py' -v
 make check     # analyze + test + web build
+make android   # Android SDK/JDK required
+make windows   # Windows + Visual Studio C++ required
 ```
 
 ## Project layout
 
 ```text
 assets/
-├── branding/                  # Icon master + square source (not bundled)
+├── branding/                  # Icon sources + native Android/Windows sizes (not bundled)
 ├── data/shibuya_level.json    # OSM-derived route spline, buildings, roads, rails, hazards
 ├── fonts/                     # Inter, JetBrains Mono, Noto Sans JP
 ├── models/                    # GLB props (tower, fleet, arch, props, Pegman rig)
@@ -156,14 +181,15 @@ lib/
     ├── game_over_card.dart    # Run summary / retry
     ├── maps_title_card.dart   # Hero + sky mood picker, best-run summary
     └── ...
-test/game_test.dart            # State, scoring, shields, pause, persistence
-docs/                          # Architecture, releasing, credits
+scripts/                        # Generated Android/Windows runner configuration + tests
+test/game_test.dart             # State, scoring, shields, pause, persistence
+docs/                           # Architecture, releasing, credits
 ```
 
 ## Documentation
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — frame loop, layer split, simulation and save-store design.
-- [`docs/RELEASING.md`](docs/RELEASING.md) — how a GitHub Release, the web ZIP and the macOS disk image are produced.
+- [`docs/RELEASING.md`](docs/RELEASING.md) — how GitHub Releases, web, Android, Windows and macOS artifacts are produced.
 - [`docs/CREDITS.md`](docs/CREDITS.md) — original demo, OSM data and third-party licences.
 - [`CHANGELOG.md`](CHANGELOG.md) — release history.
 

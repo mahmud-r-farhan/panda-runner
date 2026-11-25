@@ -39,6 +39,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Test native runner configuration
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
@@ -48,5 +51,89 @@ jobs:
       - name: Build web (release)
         run: flutter build web --release --base-href /
 
-      - name: Report build size
+      - name: Report web build size
         run: du -sh build/web && find build/web -maxdepth 1 -type f -printf '%f %s\n' | sort
+
+  android:
+    name: Android release APKs
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Generate and configure native runners
+        run: |
+          flutter create . --platforms=android,windows --project-name=panda_runner --org=dev.pandarunner
+          python scripts/configure_native_platforms.py
+
+      - name: Export generated native runner scaffolding
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v5
+        with:
+          name: native-runner-scaffolding
+          path: |
+            .metadata
+            android/
+            windows/
+          include-hidden-files: true
+          retention-days: 1
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Android APKs
+        run: flutter build apk --release --split-per-abi
+
+      - name: Report Android build outputs
+        run: ls -lh build/app/outputs/flutter-apk
+
+  windows:
+    name: Windows release build
+    needs: check
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+          cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Generate and configure native runners
+        run: |
+          flutter create . --platforms=android,windows --project-name=panda_runner --org=dev.pandarunner
+          python scripts/configure_native_platforms.py
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows (release)
+        run: flutter build windows --release
+
+      - name: Verify Windows output
+        shell: pwsh
+        run: |
+          $exe = "build/windows/x64/runner/Release/panda_runner.exe"
+          if (!(Test-Path $exe)) { throw "Expected Windows executable not found: $exe" }
+          Get-ChildItem "build/windows/x64/runner/Release" | Select-Object Name, Length
